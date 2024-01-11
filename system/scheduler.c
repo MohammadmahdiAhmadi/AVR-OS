@@ -50,6 +50,7 @@ void osWait(uint16_t wait)
 
 void osTaskExit()
 {
+    // ToDo: Should i enable interrupt again?
     DISABLE_INTERRUPTS
 
     // remove this task from the list
@@ -67,6 +68,7 @@ void osTaskExit()
     osNonSavableYield();
 }
 
+//. ToDo: Randomize itteration in tasks queue
 void osContextSwitch(int8_t resumable, int8_t incremental)
 {
     uint8_t queueSize = osTasksQueueSize();
@@ -77,9 +79,7 @@ void osContextSwitch(int8_t resumable, int8_t incremental)
 
         // task requested to wait for a while
         if(incremental) {
-            if(task != osCurrentTask)
-                task->age++;
-
+            //. Shouldn't i move next two line outside of this scope?
             if(task->wait > 0)
                 task->wait--;
         }
@@ -98,12 +98,39 @@ void osContextSwitch(int8_t resumable, int8_t incremental)
         if(!resumable && task == osCurrentTask && queueSize != 1)
             continue;
 
-        if(task->priority * queueSize + task->age > target->priority * queueSize + target->age)
+        //. This task has completed all its turns, So it will be skip
+        if(task->priority == task->age) {
+            continue;
+        }
+
+        //. idle task will be skip here
+        //. Skip 0 priority tasks
+        if(task->priority != 0) {
             target = task;
+            target->age++;
+            break;
+        }
     }
 
     osCurrentTask = target;
-    osCurrentTask->age = 0;
+
+    //. Check if all tasks have been executed according to their turns
+    uint16_t sum_priorities = 0;
+    uint16_t sum_ages = 0;
+    for(uint8_t i = 0; i < queueSize; i++) {
+        TaskControlBlock *task = osTasksQueueAt(i);
+    
+        sum_priorities += task->priority;
+        sum_ages += task->age;
+    }
+
+    //. Reseting tasks age
+    if(sum_ages == sum_priorities) {
+        for(uint8_t i = 0; i < queueSize; i++) {
+            TaskControlBlock *task = osTasksQueueAt(i);
+            task->age = 0;
+        }
+    }
 }
 
 TaskControlBlock* osCreateTask(void (*function)(void*), void *param, uint8_t stackSize, uint8_t priority)
