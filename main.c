@@ -23,68 +23,130 @@
 
 #include <stdio.h>
 #include "system/system.h"
+#include <util/delay.h>
+
+char seg_7[10] = {
+	0xbf, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f
+};
 
 volatile int a = 0;
+volatile int b = 0;
+volatile int sharedVariable = 0;
 Mutex *mutex = NULL;
 
-void task01(void* parameters)
+
+// Simple task 1_1
+void simple_task1_1(void *parameters)
+{
+	while(1) {
+		PORTB = ~seg_7[1];
+	}
+}
+
+// Simple task 1_2
+void simple_task1_2(void *parameters)
+{
+	while(1) {
+		PORTB = ~seg_7[2];
+	}
+}
+
+// Simple task 1_3
+void simple_task1_3(void *parameters)
+{
+	while(1) {
+		PORTB = ~seg_7[3];
+	}
+}
+
+// Simple task 2_1
+void simple_task2_1(void *parameters)
+{
+	while(1) {
+		a = (a + 1) % 256;
+		PORTA = a;
+		_delay_ms(250);
+	}
+}
+
+// Simple task 2_2
+void simple_task2_2(void *parameters)
+{
+	while(1) {
+		b = (b + 1) % 256;
+		PORTB = b;
+		_delay_ms(250);
+	}
+}
+
+// Mutex task 1_1
+void mutex_task1_1(void* parameters)
+{
+	PORTA = ~seg_7[1];
+	osMutexLock(mutex);
+	PORTA = ~seg_7[2];
+	while (1);
+}
+
+// Mutex task 1_2
+void mutex_task1_2(void *parameters)
+{
+	PORTA = ~seg_7[3];
+	osMutexLock(mutex);
+	PORTA = ~seg_7[4];
+	while (1);
+}
+
+
+// Mutex task 2_1
+void mutex_task2_1(void* parameters)
 {
     while(1) {
-        osMutexLock(mutex);
+		// Set task number to PORTB
+		PORTB = ~seg_7[1];
+		
+		osMutexLock(mutex);
+		sharedVariable = (sharedVariable + 2) % 10;
+		PORTA = ~seg_7[sharedVariable];
+		osMutexUnlock(mutex);
 
-        a = (a + 1) % 32000;
-        if(a == 20)
-            a++;
-
-        while(a < 2000)
-            a++;
-
-        osMutexUnlock(mutex);
-    }
+		_delay_ms(200);
+	}
 }
 
-void task02(void* parameters)
+// Mutex task 2_2
+void mutex_task2_2(void* parameters)
 {
-    osMutexLock(mutex);
-
-    a = (a + 1) % 32000;
-    if(a == 20)
-        a++;
-
-    while(a < 2000)
-        a++;
-
-    osMutexUnlock(mutex);
+	while(1) {
+		// Set task number to PORTB
+		PORTB = ~seg_7[2];
+		
+		osMutexLock(mutex);
+		sharedVariable = (sharedVariable - 1) % 10;
+		PORTA = ~seg_7[sharedVariable];
+		osMutexUnlock(mutex);
+		
+		_delay_ms(200);
+	}
 }
 
-void task03(void *parameters)
-{
-    while(1) {
-        osMutexLock(mutex);
-
-        a = (a + 1) % 32000;
-        if(a == 20)
-            a++;
-
-        while(a < 2000)
-            a++;
-
-        osMutexUnlock(mutex);
-    }
-}
 
 int main(int argc, char* argv[])
 {
+	DDRA = 0xFF;
+	DDRB = 0xFF;
+	DDRC = 0xFF;
+	
     // initialize operating system
     osInit();
 
     // create lockable object
     mutex = osMutexCreate();
 
-    // add some tasks
-    osCreateTask(task01, NULL, 64, 4);
-    osCreateTask(task02, NULL, 64, 4);
-    osCreateTask(task03, NULL, 64, 3);
+	// Simple multi-tasking
+    osCreateTask(simple_task1_1, NULL, 64, 2);
+    osCreateTask(simple_task1_2, NULL, 64, 4);
+    osCreateTask(simple_task1_3, NULL, 64, 8);
 
     // run
     osRun();

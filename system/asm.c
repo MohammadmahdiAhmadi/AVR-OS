@@ -26,11 +26,11 @@
 #include "scheduler.h"
 
 // save context of the current task (osTask)
+//. I remove 'cli' from a line before 'push r0' 
 #define SAVE_CONTEXT                       \
   asm volatile (                           \
     "push  r0                       \n\t"  \
     "in    r0, __SREG__             \n\t"  \
-    "cli                            \n\t"  \
     "push  r0                       \n\t"  \
     "push  r1                       \n\t"  \
     "clr  r1                        \n\t"  \
@@ -118,9 +118,12 @@
     "pop  r0                        \n\t"  \
   );
 
+//. Timer1 Setup for interrupt and context switching
 void osSetupTimerInterrupt()
 {
-    #define CTC_MATCH_OVERFLOW  ((F_CPU / 1000) / 8)
+    //. ToDo: Set CTC_MATCH_OVERFLOW correctly
+	//. Edit here to change interrupt schedule
+    #define CTC_MATCH_OVERFLOW  ((F_CPU / 1000) / 8) * 1000
 
     OCR1AH = (uint8_t)(CTC_MATCH_OVERFLOW >> 8);
     OCR1AL = (uint8_t)(CTC_MATCH_OVERFLOW);
@@ -135,6 +138,7 @@ void osSetupTimerInterrupt()
     TIMSK |= (1 << OCIE1A);
 }
 
+//. It's called from mutex lock
 uint8_t osTAS(uint8_t *v)
 {
     uint8_t p = 0;
@@ -147,6 +151,7 @@ uint8_t osTAS(uint8_t *v)
     return p;
 }
 
+//. It's called from mutex unlock
 uint8_t osCAS(uint8_t *v, uint8_t p, uint8_t q)
 {
     uint8_t n = 0;
@@ -159,6 +164,7 @@ uint8_t osCAS(uint8_t *v, uint8_t p, uint8_t q)
     return n;
 }
 
+//. It's called from os create task
 uint8_t* osInitializeStack(uint8_t* topOfStack, void (*taskFunction)(void*), void* taskParameter)
 {
     uint16_t address = 0;
@@ -266,6 +272,7 @@ uint8_t* osInitializeStack(uint8_t* topOfStack, void (*taskFunction)(void*), voi
     return topOfStack;
 }
 
+//. Is's called from osRun and os task exit
 void osNonSavableYield(void) __attribute__ ((naked));
 void osNonSavableYield(void)
 {
@@ -278,39 +285,51 @@ void osNonSavableYield(void)
     asm volatile("ret");
 }
 
+//. Is's called from mutex unlock
 void osResumableYield(void) __attribute__ ((naked));
 void osResumableYield(void)
 {
+    DISABLE_INTERRUPTS
     SAVE_CONTEXT
     osContextSwitch(1,0);
     RESTORE_CONTEXT
+    ENABLE_INTERRUPTS
 
     asm volatile("ret");
 }
 
+//. Is's called from mutex lock. And also from the osWait, but the osWait never called
 void osNonResumableYield(void) __attribute__ ((naked));
 void osNonResumableYield(void)
 {
+    DISABLE_INTERRUPTS
     SAVE_CONTEXT
     osContextSwitch(0,0);
     RESTORE_CONTEXT
+    ENABLE_INTERRUPTS
 
     asm volatile("ret");
 }
 
+//. Is's called from timer interrupts service routine
 void osAsmYieldFromTick(void) __attribute__ ((naked));
 void osAsmYieldFromTick()
 {
+    DISABLE_INTERRUPTS
     SAVE_CONTEXT
     osContextSwitch(1,1);
     RESTORE_CONTEXT
+    ENABLE_INTERRUPTS
 
-    asm volatile("ret");
+    asm volatile("reti");
 }
 
+//. Timer1 interrupt service routine (ISR)
 void TIMER1_COMPA_vect(void) __attribute__ ((signal, naked));
 void TIMER1_COMPA_vect(void)
 {
+    //. ToDo: Remove next line
+	PORTC ^= (1 << PORTC0);
     osAsmYieldFromTick();
     asm volatile("reti");
 }
