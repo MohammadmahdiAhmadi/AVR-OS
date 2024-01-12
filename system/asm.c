@@ -286,6 +286,7 @@ void osNonSavableYield(void)
 }
 
 //. Is's called from mutex unlock
+//. Why should we switch the task when we unlock mutex?
 void osResumableYield(void) __attribute__ ((naked));
 void osResumableYield(void)
 {

@@ -187,3 +187,4 @@ pip-log.txt
 # Proteus
 *.pdsbak
 *.workspace
+*.vs

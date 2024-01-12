@@ -107,7 +107,11 @@ void osContextSwitch(int8_t resumable, int8_t incremental)
         //. Skip 0 priority tasks
         if(task->priority != 0) {
             target = task;
-            target->age++;
+
+            //. I think this is for mutex lock handling
+            if(incremental) {
+                target->age++;
+            }
             break;
         }
     }
