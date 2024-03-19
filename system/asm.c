@@ -22,6 +22,7 @@
  */
 
 #include <avr/interrupt.h>
+#include <avr/eeprom.h>
 #include "asm.h"
 #include "scheduler.h"
 
@@ -31,6 +32,7 @@
   asm volatile (                           \
     "push  r0                       \n\t"  \
     "in    r0, __SREG__             \n\t"  \
+    "cli                            \n\t"  \
     "push  r0                       \n\t"  \
     "push  r1                       \n\t"  \
     "clr  r1                        \n\t"  \
@@ -272,14 +274,54 @@ uint8_t* osInitializeStack(uint8_t* topOfStack, void (*taskFunction)(void*), voi
     return topOfStack;
 }
 
+char seg_7t[10] = {
+	0xbf, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f
+};
+
+void dynamic_task1_1t(void *parameters)
+{
+	while(1) {
+		PORTB = ~seg_7t[1];
+	}
+}
+
+// Stack pointer value that we save it after RESTORE_CONTEXT then restore it in main SP before SAVE_CONTEXT
+uint16_t current_task_local_sp;
+// #define EEPROM_ADDR 0x00
+
 //. Is's called from osRun and os task exit
 void osNonSavableYield(void) __attribute__ ((naked));
 void osNonSavableYield(void)
 {
     // do not save context since there is no "current" task
     // we want to start the first task right away
+    DISABLE_INTERRUPTS
     osContextSwitch(1,0);
+
+	// BUG - Before RESTORE_CONTEXT, SP is 2135. But after that is 295!
+    // Save the stack pointer
+	eeprom_write_word((uint16_t*)EEPROM_ADDR_SP, SP);
+	
     RESTORE_CONTEXT
+
+//     TaskControlBlock *task11 = (TaskControlBlock*)malloc(sizeof(TaskControlBlock));
+// 	TaskControlBlock *task22 = (TaskControlBlock*)x_malloc(sizeof(TaskControlBlock));
+
+
+    // current_task_local_sp = SP;
+
+	// SP = eeprom_read_word((uint16_t*)EEPROM_ADDR);
+// 	SP = 0x0857;
+// 	SP = old_sp
+    // SP = current_task_local_sp;
+
+
+//	osCreateTask(dynamic_task1_1t, NULL, 64, 2);
+// 	SP = 0x0129;
+	
+ 
+    // osCreateTask(dynamic_task1_1t, NULL, 64, 2);
+    ENABLE_INTERRUPTS
 
     // we will jump to the first task on the list
     asm volatile("ret");
@@ -291,9 +333,21 @@ void osResumableYield(void) __attribute__ ((naked));
 void osResumableYield(void)
 {
     DISABLE_INTERRUPTS
+
+
+	// eeprom_write_word((uint16_t*)EEPROM_ADDR, SP);
+    // SP = current_task_local_sp;
     SAVE_CONTEXT
+	// SP = eeprom_read_word((uint16_t*)EEPROM_ADDR);
+
     osContextSwitch(1,0);
+
+	// eeprom_write_word((uint16_t*)EEPROM_ADDR, SP);
     RESTORE_CONTEXT
+    // current_task_local_sp = SP;
+	// SP = eeprom_read_word((uint16_t*)EEPROM_ADDR);
+
+
     ENABLE_INTERRUPTS
 
     asm volatile("ret");
@@ -304,9 +358,21 @@ void osNonResumableYield(void) __attribute__ ((naked));
 void osNonResumableYield(void)
 {
     DISABLE_INTERRUPTS
+
+
+	// eeprom_write_word((uint16_t*)EEPROM_ADDR, SP);
+    // SP = current_task_local_sp;
     SAVE_CONTEXT
+	// SP = eeprom_read_word((uint16_t*)EEPROM_ADDR);
+
     osContextSwitch(0,0);
+
+	// eeprom_write_word((uint16_t*)EEPROM_ADDR, SP);
     RESTORE_CONTEXT
+    // current_task_local_sp = SP;
+	// SP = eeprom_read_word((uint16_t*)EEPROM_ADDR);
+
+
     ENABLE_INTERRUPTS
 
     asm volatile("ret");
@@ -317,9 +383,21 @@ void osAsmYieldFromTick(void) __attribute__ ((naked));
 void osAsmYieldFromTick()
 {
     DISABLE_INTERRUPTS
+
+
+	// eeprom_write_word((uint16_t*)EEPROM_ADDR, SP);
+    // SP = current_task_local_sp;
     SAVE_CONTEXT
+	// SP = eeprom_read_word((uint16_t*)EEPROM_ADDR);
+
     osContextSwitch(1,1);
+
+	// eeprom_write_word((uint16_t*)EEPROM_ADDR, SP);
     RESTORE_CONTEXT
+    // current_task_local_sp = SP;
+	// SP = eeprom_read_word((uint16_t*)EEPROM_ADDR);
+
+
     ENABLE_INTERRUPTS
 
     asm volatile("reti");

@@ -50,9 +50,9 @@ TaskControlBlock* osTasksQueueAt(int8_t at)
     return NULL;
 }
 
-void osTasksQueueInsert(TaskControlBlock *task)
+bool osTasksQueueInsert(TaskControlBlock *task)
 {
-    osQueueInsert(osQueue, task);
+    return osQueueInsert(osQueue, task);
 }
 
 void osTasksQueueRemove(TaskControlBlock *task)

@@ -117,6 +117,7 @@ void osContextSwitch(int8_t resumable, int8_t incremental)
     }
 
     osCurrentTask = target;
+    osCurrentTaskPtr = target;
 
     //. Check if all tasks have been executed according to their turns
     uint16_t sum_priorities = 0;
@@ -137,27 +138,45 @@ void osContextSwitch(int8_t resumable, int8_t incremental)
     }
 }
 
-TaskControlBlock* osCreateTask(void (*function)(void*), void *param, uint8_t stackSize, uint8_t priority)
+TaskControlBlock* osCreateTask(void (*function)(void*), void *param, size_t stackSize, uint8_t priority)
 {
-    TaskControlBlock *task = (TaskControlBlock*)malloc(sizeof(TaskControlBlock));
-    if(!task)
+    TaskControlBlock *task = (TaskControlBlock*)x_malloc(sizeof(TaskControlBlock));
+    if(!task) {
         return NULL;
+        // task = (TaskControlBlock*)x_malloc(sizeof(TaskControlBlock));
+        // if(!task)
+        //     return NULL;
+    }
 
-    uint8_t* stack = malloc(stackSize);
+    uint8_t* stack = x_malloc(stackSize);
     if(!stack) {
+        // stack = x_malloc(stackSize);
+        // if(!stack) {
+        //     free(task);
+        //     return NULL;
+        // }
         free(task);
         return NULL;
     }
 
     // stack pointer and stack chunk
+	uint16_t tt = stack + stackSize - 1;
+	printf("%d", tt);
+    task->sp = osInitializeStack(tt, function, param);
     task->sp = osInitializeStack(stack + stackSize - 1, function, param);
     task->sc = stack;
+    task->sct = stack;
+    
 
     task->priority = priority;
     task->wait = 0;
     task->age = 0;
 
-    osTasksQueueInsert(task);
+    if (!osTasksQueueInsert(task)) {
+        free(task);
+        free(stack);
+        return NULL;
+    }
     return task;
 }
 

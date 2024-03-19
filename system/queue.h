@@ -25,6 +25,7 @@
 #define _QUEUE_H
 
 #include <stdio.h>
+#include <stdbool.h>
 #include "tasks.h"
 
 typedef struct {
@@ -36,6 +37,6 @@ typedef struct {
 Queue* osQueueCreate();
 void osQueueDestroy(Queue *queue);
 void osQueueRemove(Queue *queue, TaskControlBlock *task);
-void osQueueInsert(Queue *queue, TaskControlBlock *task);
+bool osQueueInsert(Queue *queue, TaskControlBlock *task);
 
 #endif

@@ -25,6 +25,8 @@
 #include "system/system.h"
 #include <util/delay.h>
 
+#define MIN_STACK_POINTER_VALUE 1900
+
 char seg_7[10] = {
 	0xbf, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f
 };
@@ -56,6 +58,14 @@ void simple_task1_3(void *parameters)
 {
 	while(1) {
 		PORTB = ~seg_7[3];
+	}
+}
+
+// Simple task 1_3
+void simple_task1_4(void *parameters)
+{
+	while(1) {
+		PORTB = ~seg_7[4];
 	}
 }
 
@@ -130,13 +140,105 @@ void mutex_task2_2(void* parameters)
 	}
 }
 
+void* x_malloc(size_t size) {
+	uint16_t stored_sp = eeprom_read_word((uint16_t*)EEPROM_ADDR_SP);
+	void* new_memory;
+
+	// OS Is not yet running, So SP has not changed
+	if(stored_sp == 0) {
+		return malloc(size);
+	} else {
+		uint16_t tmp_sp = SP;
+		SP = stored_sp;
+		new_memory = malloc(size);
+		SP = tmp_sp;
+		return new_memory;
+	}
+}
+
+void* x_realloc(void* ptr, size_t size) {
+	uint16_t stored_sp = eeprom_read_word((uint16_t*)EEPROM_ADDR_SP);
+	void* new_memory;
+
+	// OS Is not yet running, So SP has not changed
+	if(stored_sp == 0) {
+		return realloc(ptr, size);
+	} else {
+		uint16_t tmp_sp = SP;
+		SP = stored_sp;
+    	new_memory = realloc(ptr, size);
+		SP = tmp_sp;
+		return new_memory;
+	}
+}
+
+// Dynamic task 1_4
+void dynamic_task1_4(void *parameters)
+{
+	while(1) {
+		PORTB = ~seg_7[4];
+	}
+}
+
+// Dynamic task 1_1
+void dynamic_task1_1(void *parameters)
+{
+	DISABLE_INTERRUPTS
+	osCreateTask(dynamic_task1_4, NULL, 64, 4);
+	ENABLE_INTERRUPTS
+
+	while(1) {
+		PORTB = ~seg_7[1];
+	}
+}
+
+// 2 Bytes for next function call, 2 Bytes for ISR
+#define IS_SAFE_CALL(value) ((SP - value) > 4 ? 1 : 0)
+
+// Dynamic task 1_2
+void dynamic_task1_2(void *parameters)
+{
+	while(1) {
+		PORTB = ~seg_7[2];
+	}
+}
+
+void recursion(int i) {
+	if(i == 0)
+		return;
+	
+	if(IS_SAFE_CALL(osCurrentTaskPtr->sct))
+		return recursion(i-1);
+	else
+		return;
+}
+
+// Dynamic task 1_3
+void dynamic_task1_3(void *parameters)
+{
+	if(IS_SAFE_CALL(osCurrentTaskPtr->sct)){
+		DISABLE_INTERRUPTS
+		osCreateTask(dynamic_task1_1, NULL, 64, 1);
+		ENABLE_INTERRUPTS
+	}
+
+	if(IS_SAFE_CALL(osCurrentTaskPtr->sct))
+		recursion(100);
+
+	while(1) {
+		PORTB = ~seg_7[3];
+	}
+}
+
 
 int main(int argc, char* argv[])
 {
+	eeprom_write_word((uint16_t*)EEPROM_ADDR_SP, 0x0000);
+
 	DDRA = 0xFF;
 	DDRB = 0xFF;
 	DDRC = 0xFF;
-	
+
     // initialize operating system
     osInit();
 
@@ -144,10 +246,38 @@ int main(int argc, char* argv[])
     mutex = osMutexCreate();
 
 	// Simple multi-tasking
-    osCreateTask(simple_task1_1, NULL, 64, 2);
-    osCreateTask(simple_task1_2, NULL, 64, 4);
-    osCreateTask(simple_task1_3, NULL, 64, 8);
+    osCreateTask(dynamic_task1_3, NULL, 90, 3);
+    osCreateTask(dynamic_task1_2, NULL, 128, 2);
 
     // run
     osRun();
 }
+
+
+
+
+
+// 
+// uint16_t *t = (uint16_t*)malloc(sizeof(uint16_t));
+// *t = 10;
+// uint16_t *t2 = (uint16_t*)malloc(sizeof(uint16_t));
+// *t2 = 12;
+// uint16_t *t3 = (uint16_t*)malloc(sizeof(uint16_t));
+// *t3 = 13;
+// uint16_t *t4 = (uint16_t*)malloc(sizeof(uint16_t));
+// *t4 = 14;
+// uint16_t *t5 = (uint16_t*)malloc(sizeof(uint16_t));
+// *t5 = 15;
+// uint16_t *t6 = (uint16_t*)malloc(sizeof(uint16_t));
+// *t6 = 16;
+// 
+// uint16_t ff = t;
+// uint16_t t7 = 17;
+// ff = ff + t2;
+// ff = ff + t3;
+// ff = ff + t4;
+// ff = ff + t5;
+// ff = ff + t6;
+// ff = ff + t7;
+// 
+// printf("%d", ff);

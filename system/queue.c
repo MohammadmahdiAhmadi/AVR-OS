@@ -62,13 +62,19 @@ void osQueueRemove(Queue *queue, TaskControlBlock *task)
     }
 }
 
-void osQueueInsert(Queue *queue, TaskControlBlock *task)
+bool osQueueInsert(Queue *queue, TaskControlBlock *task)
 {
     if(queue->size + 1 >= queue->length) {
         queue->length++;
-        queue->tasks = (TaskControlBlock**)realloc(queue->tasks, sizeof(TaskControlBlock*) * queue->length);
+        queue->tasks = (TaskControlBlock**)x_realloc(queue->tasks, sizeof(TaskControlBlock*) * queue->length);
+        if(!queue->tasks) {
+            queue->length--;
+            return false;
+        }
     }
 
     queue->tasks[queue->size] = task;
     queue->size++;
+
+    return true;
 }

@@ -27,12 +27,14 @@
 #include <stdio.h>
 #include "tasks.h"
 
+TaskControlBlock* volatile osCurrentTaskPtr;
+
 void osSchedulerInit();
 void osWait(uint16_t wait);
 void osTaskExit();
 void osContextSwitch(int8_t resumable, int8_t incremental);
 
-TaskControlBlock* osCreateTask(void (*function)(void*), void *param, uint8_t stackSize, uint8_t priority);
+TaskControlBlock* osCreateTask(void (*function)(void*), void *param, size_t stackSize, uint8_t priority);
 void osTaskDestroy(TaskControlBlock *task);
 
 #endif

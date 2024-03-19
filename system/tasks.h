@@ -25,10 +25,15 @@
 #define _TASKS_H
 
 #include <stdio.h>
+#include <stdbool.h>
+
+#define EEPROM_ADDR_SP 0x00
 
 typedef struct {
-    uint8_t* sp;
-    uint8_t* sc;
+    // Available stack size is: sp - sc Bytes
+    uint8_t* sp; // Top of stack after initializing
+    uint8_t* sc; // Bottom of stack after initializing
+    uint16_t sct; // Bottom of stack after initializing
 
     // rest stuff
     uint8_t priority;
@@ -40,7 +45,7 @@ void osTasksQueueInit();
 void osTasksQueueDestroy();
 uint8_t osTasksQueueSize();
 TaskControlBlock* osTasksQueueAt(int8_t at);
-void osTasksQueueInsert(TaskControlBlock *task);
+bool osTasksQueueInsert(TaskControlBlock *task);
 void osTasksQueueRemove(TaskControlBlock *task);
 
 #endif
