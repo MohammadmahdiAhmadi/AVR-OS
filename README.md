@@ -31,4 +31,4 @@ Refer to the `main.c` file for examples on how to integrate and use the operatin
 - **GCC (Atmel Studio)**
 
 ## Known Issues
-- It is unsafe to create processes, mutexes, or call `malloc`/`free` when the system is running (fix: add system-side and pre-emptive save allocation mechanism).
+- It is unsafe to create processes, mutexes, or call `malloc`/`free` within running tasks. In fact, you have to be careful about the size of the block that you want to allocate using `malloc`; the size must be smaller than the free size of the task's stack. (We can add a system-side and preemptive safe allocation mechanism to prevent tasks from stack overflow).
