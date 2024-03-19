@@ -188,3 +188,5 @@ pip-log.txt
 *.pdsbak
 *.workspace
 *.vs
+.vscode/
+FreeRTOS-Kernel/
